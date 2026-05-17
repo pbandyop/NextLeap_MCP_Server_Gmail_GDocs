@@ -13,17 +13,33 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def _materialize_credentials_from_env() -> None:
+def _env(name: str) -> str | None:
+    value = os.environ.get(name)
+    if value is None:
+        return None
+    value = value.strip()
+    return value or None
+
+
+def _materialize_credentials_from_env() -> bool:
     """Write credentials.json from GOOGLE_CREDENTIALS_JSON (Railway / Render)."""
-    raw = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    raw = _env("GOOGLE_CREDENTIALS_JSON")
     if not raw:
-        return
+        return False
     with open("credentials.json", "w", encoding="utf-8") as f:
-        f.write(raw.strip())
+        f.write(raw)
     logger.info("credentials.json created from GOOGLE_CREDENTIALS_JSON")
+    return True
 
 
-_materialize_credentials_from_env()
+_credentials_materialized = _materialize_credentials_from_env()
+if os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER"):
+    logger.info(
+        "Deploy config: GOOGLE_CREDENTIALS_JSON=%s, GOOGLE_TOKEN_JSON=%s, credentials.json=%s",
+        "set" if _env("GOOGLE_CREDENTIALS_JSON") else "missing",
+        "set" if _env("GOOGLE_TOKEN_JSON") else "missing",
+        "exists" if os.path.exists("credentials.json") else "missing",
+    )
 
 # ---------------- APP INIT ---------------- #
 app = FastAPI(title="Google MCP Server")
@@ -154,12 +170,30 @@ def run_email(data: EmailInput):
 
 
 # ---------------- HEALTH CHECK ---------------- #
-@app.get("/")
-def root():
+def _config_status() -> dict:
+    creds_env = _env("GOOGLE_CREDENTIALS_JSON")
+    token_env = _env("GOOGLE_TOKEN_JSON")
+
+    if creds_env and not os.path.exists("credentials.json"):
+        _materialize_credentials_from_env()
+
+    credentials_ready = os.path.exists("credentials.json")
+    token_configured = bool(token_env) or os.path.exists("token.json")
+
     return {
         "message": "Google MCP Server is running 🚀",
         "deployed": bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER")),
-        "credentials_ready": os.path.exists("credentials.json"),
-        "token_configured": bool(os.getenv("GOOGLE_TOKEN_JSON"))
-        or os.path.exists("token.json"),
+        "credentials_ready": credentials_ready,
+        "token_configured": token_configured,
+        # Safe diagnostics (no secret values) — use to debug Railway variables
+        "config": {
+            "GOOGLE_CREDENTIALS_JSON": "set" if creds_env else "missing",
+            "GOOGLE_TOKEN_JSON": "set" if token_env else "missing",
+            "AUTO_APPROVE": os.getenv("AUTO_APPROVE", "not set"),
+        },
     }
+
+
+@app.get("/")
+def root():
+    return _config_status()
