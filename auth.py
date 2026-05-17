@@ -15,7 +15,14 @@ def get_creds():
     # 1. Load from Environment Variable (for Render)
     env_token = os.environ.get("GOOGLE_TOKEN_JSON")
     if env_token:
-        creds = Credentials.from_authorized_user_info(json.loads(env_token), SCOPES)
+        try:
+            creds = Credentials.from_authorized_user_info(
+                json.loads(env_token.strip()), SCOPES
+            )
+        except json.JSONDecodeError as exc:
+            raise ValueError(
+                "GOOGLE_TOKEN_JSON is not valid JSON. Paste the full token.json contents."
+            ) from exc
     # 2. Fallback to local file
     elif os.path.exists("token.json"):
         creds = Credentials.from_authorized_user_file("token.json", SCOPES)
@@ -36,11 +43,23 @@ def get_creds():
 
             # Local flow
             flow = InstalledAppFlow.from_client_secrets_file("credentials.json", SCOPES)
-            creds = flow.run_local_server(port=0)
+            creds = flow.run_local_server(port=0, open_browser=True)
 
         # Save the refreshed token locally only when not running in a deployed env
         if not is_deployed:
             with open("token.json", "w") as token:
                 token.write(creds.to_json())
-                
+
     return creds
+
+
+if __name__ == "__main__":
+    if not os.path.exists("credentials.json"):
+        raise SystemExit(
+            "credentials.json not found. Download OAuth credentials from Google Cloud Console "
+            "and place the file in this directory."
+        )
+
+    print("Starting Google OAuth — your browser should open shortly...", flush=True)
+    get_creds()
+    print("Done. token.json has been saved.", flush=True)

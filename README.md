@@ -59,10 +59,21 @@ cd google-mcp-server
 
 ### 2. Create virtual environment
 
+**macOS / Linux:**
+
 ```
 python3 -m venv venv
 source venv/bin/activate
 ```
+
+**Windows (PowerShell):**
+
+```
+python -m venv venv
+.\venv\Scripts\Activate.ps1
+```
+
+> On Windows, use `python` (not `python3`). The `python3` command often points to a Microsoft Store placeholder and fails with “Python was not found.”
 
 ###  3. Install dependencies
 
@@ -87,9 +98,20 @@ pip install -r requirements.txt
 
 ### 5. 🔐 Run OAuth
 
+**macOS / Linux:**
+
 ```
 python3 auth.py
 ```
+
+**Windows:**
+
+```
+python auth.py
+```
+
+Or double-click / run `auth.bat` from the project folder.
+
 - Opens browser for login
 - Generates token.json
 
@@ -105,6 +127,16 @@ Open:
 http://127.0.0.1:8000/docs
 ```
 
+---
+
+## 🚂 Deploy to Railway
+
+For production hosting (public HTTPS URL, no local terminal approval):
+
+1. Complete local OAuth (`python auth.py`) so you have `token.json`.
+2. Follow **[DEPLOYMENT.md](DEPLOYMENT.md)** — GitHub deploy, Railway variables, verification, and troubleshooting.
+
+---
 
 ## 🧪 How to Test
 

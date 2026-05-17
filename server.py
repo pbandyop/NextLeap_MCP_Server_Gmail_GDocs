@@ -5,19 +5,25 @@ from pydantic import BaseModel
 from docs_tool import append_to_doc
 from gmail_tool import create_email_draft
 
-# Re-create credentials.json from environment variable for Google libraries
-if os.environ.get("GOOGLE_CREDENTIALS_JSON"):
-    with open("credentials.json", "w") as f:
-        f.write(os.environ.get("GOOGLE_CREDENTIALS_JSON"))
-
-logging.basicConfig(level=logging.INFO)
 # ---------------- LOGGING SETUP ---------------- #
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
+    format="%(asctime)s - %(levelname)s - %(message)s",
 )
-
 logger = logging.getLogger(__name__)
+
+
+def _materialize_credentials_from_env() -> None:
+    """Write credentials.json from GOOGLE_CREDENTIALS_JSON (Railway / Render)."""
+    raw = os.environ.get("GOOGLE_CREDENTIALS_JSON")
+    if not raw:
+        return
+    with open("credentials.json", "w", encoding="utf-8") as f:
+        f.write(raw.strip())
+    logger.info("credentials.json created from GOOGLE_CREDENTIALS_JSON")
+
+
+_materialize_credentials_from_env()
 
 # ---------------- APP INIT ---------------- #
 app = FastAPI(title="Google MCP Server")
@@ -151,5 +157,9 @@ def run_email(data: EmailInput):
 @app.get("/")
 def root():
     return {
-        "message": "Google MCP Server is running 🚀"
+        "message": "Google MCP Server is running 🚀",
+        "deployed": bool(os.getenv("RAILWAY_ENVIRONMENT") or os.getenv("RENDER")),
+        "credentials_ready": os.path.exists("credentials.json"),
+        "token_configured": bool(os.getenv("GOOGLE_TOKEN_JSON"))
+        or os.path.exists("token.json"),
     }

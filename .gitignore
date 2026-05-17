@@ -1,14 +1,11 @@
 # Python
 venv/
-credentials.json
-token.json
 __pycache__/
 .env
 
-# Secrets
+# Secrets (never commit)
 credentials.json
 token.json
-.env
 
 # OS
 .DS_Store
